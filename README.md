@@ -1,6 +1,6 @@
 # CLF Log Analyzer
 
-![Homepage](https://raw.githubusercontent.com/maruwtc/clf-log-dashboard/main/src/public/pic1.png?raw=true)
+![Capture](https://github.com/maruwtc/clf-log-dashboard/blob/master/src/public/pic1.jpeg?raw=true)
 
 ## Features
 CLF Log Analyzer is an open source real-time web log analyzer and interactive viewer, which allow user to do interaction with data.
