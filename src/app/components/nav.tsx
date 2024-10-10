@@ -16,17 +16,10 @@ import {
     useDisclosure,
     BoxProps,
     FlexProps,
-    Menu,
-    MenuButton,
-    MenuDivider,
-    MenuItem,
-    MenuList,
     useColorMode,
-    Button,
 } from '@chakra-ui/react'
 import {
     FiMenu,
-    FiChevronDown,
     FiMoon,
     FiSun,
 } from 'react-icons/fi'
@@ -137,8 +130,11 @@ const HorizontalBar = ({ onOpen, currentLinkItem }: { onOpen: () => void, curren
                     aria-label="open menu"
                     icon={<FiMenu />}
                 />
-                <Text fontSize="2xl" fontFamily="monospace" fontWeight="bold">
-                    CLF Log Analyzer - {currentLinkItem.name}
+                <Text
+                    fontSize={{ base: 'md', md: '2xl' }}
+                    fontFamily="monospace"
+                    fontWeight="bold">
+                    CLF Log Analyzer -  {currentLinkItem.name}
                 </Text>
             </HStack>
             <HStack spacing={4}>
@@ -150,18 +146,6 @@ const HorizontalBar = ({ onOpen, currentLinkItem }: { onOpen: () => void, curren
                     onClick={toggleColorMode}
                     _hover={{ bg: 'transparent' }}
                 />
-                <Menu>
-                    <MenuButton as={Button} rightIcon={<FiChevronDown />} variant="ghost">
-                        Try Me
-                    </MenuButton>
-                    <MenuList>
-                        <MenuItem>Profile</MenuItem>
-                        <MenuItem>Settings</MenuItem>
-                        <MenuItem>Billing</MenuItem>
-                        <MenuDivider />
-                        <MenuItem>Sign out</MenuItem>
-                    </MenuList>
-                </Menu>
             </HStack>
         </Flex>
     )
