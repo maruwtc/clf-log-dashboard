@@ -7,7 +7,7 @@ CLF Log Analyzer is an open source real-time web log analyzer and interactive vi
 
 
 ## Usage
-1. To start edit `config.ts` to locate the log file
+1. To start edit `src/lib/config.ts` to locate the log file
 ```typescript
 export const config = {
     logPath: '/var/log/apache2/access.log',
