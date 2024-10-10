@@ -19,10 +19,10 @@ import {
     AlertIcon,
     AlertTitle,
     AlertDescription,
+    Spinner,
+    Center,
 } from '@chakra-ui/react';
 import { ChevronUpIcon, ChevronDownIcon } from '@chakra-ui/icons';
-import { sampleLogs } from '@/lib/samplelog';
-import { config } from '@/lib/config';
 
 const LogTablePage = () => {
     interface Log {
@@ -47,6 +47,8 @@ const LogTablePage = () => {
     const [itemsPerPage, setItemsPerPage] = useState(10);
     const [sortConfig, setSortConfig] = useState<{ key: keyof Log; direction: 'ascending' | 'descending' } | null>(null);
     const [usingSampleData, setUsingSampleData] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const { colorMode } = useColorMode();
 
     const columnWidths = {
@@ -60,41 +62,55 @@ const LogTablePage = () => {
     };
 
     useEffect(() => {
-        const parseLogs = async () => {
-            let logLines: string[] = [];
-
+        const fetchLogs = async () => {
+            setIsLoading(true);
             try {
-                const logPath = config.logPath;
-                const response = await fetch(logPath);
+                const response = await fetch('/api/parselog');
                 if (!response.ok) {
-                    throw new Error('Failed to fetch log file');
+                    throw new Error('Failed to fetch log data');
                 }
-                const logContent = await response.text();
-                logLines = logContent.split('\n');
+                const data = await response.json();
+                if (!data.logLines || data.logLines.length === 0) {
+                    throw new Error('No log data received');
+                }
+                const parsedLogs = parseLogLines(data.logLines);
+                setLogs(parsedLogs);
+                setFilteredLogs(parsedLogs);
                 setUsingSampleData(false);
             } catch (error) {
-                console.warn('Error reading log file:', error);
-                console.log('Falling back to sample data');
-                logLines = sampleLogs;
+                console.error('Error fetching log data:', error);
+                setError((error as Error).message);
                 setUsingSampleData(true);
+                // You might want to set some sample data here if available
+            } finally {
+                setIsLoading(false);
             }
-
-            const parsedLogs = logLines.map(log => {
-                const regex = /^(\S+) .* \[(\S+) .*\] "(\S+) (\S+) (\S+)" (\d+) (\d+)$/;
-                const match = log.match(regex);
-                if (match) {
-                    const [, ip, date, method, path, protocol, status, size] = match;
-                    return { ip, date, method, path, protocol, status, size };
-                }
-                return null;
-            }).filter((log): log is Log => log !== null);
-
-            setLogs(parsedLogs);
-            setFilteredLogs(parsedLogs);
         };
 
-        parseLogs();
+        fetchLogs();
     }, []);
+
+    const parseLogLines = (logLines: string[]): Log[] => {
+        return logLines.map(log => {
+            const regex = /^(\S+) \S+ \S+ \[(.*?)\] "([^"]*)" (\d+) (\d+)(?: "([^"]*)" "([^"]*)")?/;
+            const match = log.match(regex);
+            if (match) {
+                const [, ip, dateTime, request, status, size] = match;
+                const [date, time] = dateTime.split(':');
+                const [method, path, protocol] = request.split(' ');
+                return {
+                    ip,
+                    date: `${date} ${time}`,
+                    method: method || '-',
+                    path: path || '-',
+                    protocol: protocol || '-',
+                    status,
+                    size
+                };
+            }
+            return null;
+        }).filter((log): log is Log => log !== null);
+    };
 
     useEffect(() => {
         let filtered = logs.filter(log => {
@@ -159,13 +175,31 @@ const LogTablePage = () => {
         return sortConfig.direction === 'ascending' ? <ChevronUpIcon /> : <ChevronDownIcon />;
     };
 
+    if (isLoading) {
+        return (
+            <Center h="100vh">
+                <Spinner size="xl" />
+            </Center>
+        );
+    }
+
+    if (error) {
+        return (
+            <Alert status='error' mb={4} borderRadius={'full'}>
+                <AlertIcon />
+                <AlertTitle>Error</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+            </Alert>
+        );
+    }
+
     return (
         <Box>
             {usingSampleData && (
-                <Alert status='error' mb={4} borderRadius={'full'}>
+                <Alert status='warning' mb={4} borderRadius={'full'}>
                     <AlertIcon />
                     <AlertTitle>Using Sample Data</AlertTitle>
-                    <AlertDescription>Unable to read local log file. Displaying sample data instead.</AlertDescription>
+                    <AlertDescription>Unable to read log data from server. Displaying sample data instead.</AlertDescription>
                 </Alert>
             )}
             <VStack spacing={4} align="stretch" mb={4}>
