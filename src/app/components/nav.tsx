@@ -94,7 +94,7 @@ export const SidebarWithHeader = ({ children }: { children: React.ReactNode }) =
                     p="4"
                     width="full"
                     transition="margin-left 0.3s"
-                    pt={{ base: 0, md: "20" }}
+                    pt={{ base: "4", md: "20" }}
                     bg={useColorModeValue('white', 'gray.900')}
                     minH={"100vh"}
                 >
