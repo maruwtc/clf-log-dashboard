@@ -2,9 +2,7 @@ import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { Box, Heading, SimpleGrid, Text, Center, Spinner, useColorMode, Table, Thead, Tbody, Tr, Th, Td, Select, Button, HStack, Flex, Alert, AlertIcon, AlertTitle, AlertDescription } from '@chakra-ui/react';
 import { ChevronUpIcon, ChevronDownIcon } from '@chakra-ui/icons';
-import fs from 'fs/promises';
 import { sampleLogs } from '@/lib/samplelog';
-import { config } from '@/lib/config';
 
 const Chart = dynamic(() => import('react-apexcharts'), { ssr: false });
 
@@ -127,50 +125,73 @@ const PaginatedTable: React.FC<PaginatedTableProps> = ({ data, columns, initialS
     );
 };
 
-const Dashboard: React.FC = () => {
-    const [statusCodes, setStatusCodes] = useState<{ [key: string]: number }>({});
+const Dashboard = () => {
+    const [statusCodes, setStatusCodes] = useState({});
     const [topIPs, setTopIPs] = useState<[string, number][]>([]);
     const [topPaths, setTopPaths] = useState<[string, number][]>([]);
     const [requestsOverTime, setRequestsOverTime] = useState<{ [key: string]: number }>({});
     const [isLoading, setIsLoading] = useState(true);
     const [usingSampleData, setUsingSampleData] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const { colorMode } = useColorMode();
 
     useEffect(() => {
-        const parseLogs = async () => {
-            let logLines: string[] = [];
-
+        const fetchAndParseLogs = async () => {
             try {
-                const logPath = config.logPath;
-                const logContent = await fs.readFile(logPath, 'utf-8');
-                logLines = logContent.split('\n');
+                console.log('Fetching logs...');
+                const response = await fetch('/api/parselog');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                console.log('Received data:', data);
+                if (!data.logLines || data.logLines.length === 0) {
+                    throw new Error('No log lines received');
+                }
                 setUsingSampleData(false);
+                setErrorMessage(null);
+                parseLogs(data.logLines);
             } catch (error) {
-                console.warn('Error reading log file:', error);
-                console.log('Falling back to sample data');
-                logLines = sampleLogs;
+                console.error('Error fetching log data:', error);
+                if (error instanceof Error) {
+                    setErrorMessage(`Error fetching log data: ${error.message}`);
+                } else {
+                    setErrorMessage('An unknown error occurred');
+                }
+                console.warn('Falling back to sample data');
+                parseLogs(sampleLogs);
                 setUsingSampleData(true);
             }
+        };
 
+        const parseLogs = (logLines: string[]) => {
+            console.log('Parsing logs. Number of lines:', logLines.length);
             const codes: { [key: string]: number } = {};
             const ips: { [key: string]: number } = {};
             const paths: { [key: string]: number } = {};
             const timeData: { [key: string]: number } = {};
 
             logLines.forEach(log => {
-                const regex = /^(\S+) .* \[(\S+) .*\] "(\S+) (\S+) (\S+)" (\d+) (\d+)$/;
+                const regex = /^(\S+) \S+ \S+ \[(.*?)\] "([^"]*)" (\d+) (\d+)(?: "([^"]*)" "([^"]*)")?/;
                 const match = log.match(regex);
 
                 if (match) {
-                    const [, ip, date, method, path, protocol, status, size] = match;
-                    const hour = date.split(':')[1];
+                    const [, ip, dateTime, request, status, size, referer, userAgent] = match;
+                    const [date, time] = dateTime.split(':');
+                    const hour = time;
+
+                    const path = request.split(' ')[1] || '-';
 
                     codes[status] = (codes[status] || 0) + 1;
                     ips[ip] = (ips[ip] || 0) + 1;
                     paths[path] = (paths[path] || 0) + 1;
                     timeData[hour] = (timeData[hour] || 0) + 1;
+                } else {
+                    console.warn('Failed to parse log line:', log);
                 }
             });
+
+            console.log('Parsed data:', { codes, ips: Object.keys(ips).length, paths: Object.keys(paths).length, timeData });
 
             setStatusCodes(codes);
             setTopIPs(Object.entries(ips).sort((a, b) => b[1] - a[1]));
@@ -179,7 +200,7 @@ const Dashboard: React.FC = () => {
             setIsLoading(false);
         };
 
-        parseLogs();
+        fetchAndParseLogs();
     }, []);
 
     const getStatusCodeColor = (code: string) => {
@@ -206,60 +227,98 @@ const Dashboard: React.FC = () => {
     const pathAccessChart = {
         options: {
             ...commonChartOptions,
-            chart: { type: 'pie' as const },
-            labels: topPaths.slice(0, 5).map(([path]) => path),
+            chart: {
+                type: 'bar' as const,
+                height: 500  // Increased height for better visibility
+            },
+            xaxis: {
+                categories: topPaths.slice(0, 20).map(([path]) => path),
+                labels: {
+                    rotate: -45,
+                    trim: true,
+                    maxHeight: 120,
+                },
+            },
+            yaxis: {
+                title: {
+                    text: 'Number of Requests'
+                }
+            },
             dataLabels: {
-                enabled: true,
+                enabled: false,
             },
             plotOptions: {
-                pie: {
-                    donut: {
-                        size: '50%'
-                    }
+                bar: {
+                    horizontal: false,
                 }
             },
         },
-        series: topPaths.slice(0, 5).map(([, count]) => count),
+        series: [{
+            name: 'Requests',
+            data: topPaths.slice(0, 20).map(([, count]) => count),
+        }],
     };
 
     const visitorChart = {
         options: {
             ...commonChartOptions,
-            chart: { type: 'pie' as const },
-            labels: topIPs.slice(0, 5).map(([ip]) => ip),
+            chart: {
+                type: 'bar' as const,
+                height: 500  // Increased height for better visibility
+            },
+            xaxis: {
+                categories: topIPs.slice(0, 20).map(([ip]) => ip),
+                labels: {
+                    rotate: -45,
+                    trim: true,
+                    maxHeight: 120,
+                },
+            },
+            yaxis: {
+                title: {
+                    text: 'Number of Requests'
+                }
+            },
             dataLabels: {
-                enabled: true,
+                enabled: false,
             },
             plotOptions: {
-                pie: {
-                    donut: {
-                        size: '50%'
-                    }
+                bar: {
+                    horizontal: false,
                 }
             },
         },
-        series: topIPs.slice(0, 5).map(([, count]) => count),
+        series: [{
+            name: 'Requests',
+            data: topIPs.slice(0, 20).map(([, count]) => count),
+        }],
     };
 
     const statusCodeChart = {
         options: {
             ...commonChartOptions,
-            chart: { type: 'treemap' as const },
-            legend: { show: false },
-            dataLabels: {
-                enabled: true,
-                style: {
-                    fontSize: '12px',
-                },
-                formatter: function (text: string, op: any) {
-                    return `${text}: ${op.value}`;
-                }
+            chart: {
+                type: 'pie' as const,
             },
+            labels: Object.keys(statusCodes),
             colors: Object.keys(statusCodes).map(getStatusCodeColor),
             plotOptions: {
-                treemap: {
-                    distributed: true,
-                    enableShades: false
+                pie: {
+                    expandOnClick: false
+                }
+            },
+            dataLabels: {
+                enabled: true,
+                formatter: function (val: number, opts: { w: { config: { labels: string[], series: number[] } }, seriesIndex: number }) {
+                    return opts.w.config.labels[opts.seriesIndex] + ": " + opts.w.config.series[opts.seriesIndex];
+                }
+            },
+            legend: {
+                show: true,
+                position: 'bottom' as const,
+                fontSize: '14px',
+                formatter: function (seriesName: string, opts: { w: { globals: { series: number[] } }, seriesIndex: number }) {
+                    return seriesName + ":  " + opts.w.globals.series[opts.seriesIndex]
                 }
             },
             tooltip: {
@@ -270,14 +329,7 @@ const Dashboard: React.FC = () => {
                 }
             }
         },
-        series: [
-            {
-                data: Object.entries(statusCodes).map(([code, count]) => ({
-                    x: code,
-                    y: count
-                }))
-            }
-        ],
+        series: Object.values(statusCodes),
     };
 
     const timeSeriesChart = {
@@ -331,23 +383,37 @@ const Dashboard: React.FC = () => {
         );
     }
 
+    console.log('Rendering with data:', { statusCodes, topIPs, topPaths, requestsOverTime });
+
     return (
         <Box>
             {usingSampleData && (
-                <Alert status='error' mb={4} borderRadius={'full'}>
+                <Alert status='warning' mb={4} borderRadius={'full'}>
                     <AlertIcon />
                     <AlertTitle>Using Sample Data</AlertTitle>
-                    <AlertDescription>Unable to read local log file. Displaying sample data instead.</AlertDescription>
+                    <AlertDescription>
+                        Unable to read local log file. Displaying sample data instead.
+                        {errorMessage && <Text mt={2}>Error details: {errorMessage}</Text>}
+                    </AlertDescription>
+                </Alert>
+            )}
+            {Object.keys(statusCodes).length === 0 && (
+                <Alert status='error' mb={4} borderRadius={'full'}>
+                    <AlertIcon />
+                    <AlertTitle>No Data Available</AlertTitle>
+                    <AlertDescription>
+                        No log data could be parsed. Please check the log file format.
+                    </AlertDescription>
                 </Alert>
             )}
             <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
                 <Box borderWidth={1} borderRadius="lg" p={4}>
-                    <Heading as="h2" size="lg" mb={4}>Top 5 Path Access</Heading>
+                    <Heading as="h2" size="lg" mb={4}>Top 20 Path Access</Heading>
                     <Chart
                         options={pathAccessChart.options}
                         series={pathAccessChart.series}
-                        type="pie"
-                        height={350}
+                        type="bar"
+                        height={500}  // Increased height
                     />
                     <PaginatedTable
                         data={topPaths.map(([path, count]) => ({ path, count }))}
@@ -361,12 +427,12 @@ const Dashboard: React.FC = () => {
                 </Box>
 
                 <Box borderWidth={1} borderRadius="lg" p={4}>
-                    <Heading as="h2" size="lg" mb={4}>Top 5 Visitors</Heading>
+                    <Heading as="h2" size="lg" mb={4}>Top 20 Visitors</Heading>
                     <Chart
                         options={visitorChart.options}
                         series={visitorChart.series}
-                        type="pie"
-                        height={350}
+                        type="bar"
+                        height={500}  // Increased height
                     />
                     <PaginatedTable
                         data={topIPs.map(([ip, count]) => ({ ip, count }))}
@@ -380,11 +446,11 @@ const Dashboard: React.FC = () => {
                 </Box>
 
                 <Box borderWidth={1} borderRadius="lg" p={4}>
-                    <Heading as="h2" size="lg" mb={4}>Status Codes</Heading>
+                    <Heading as="h2" size="lg" mb={4}>Status Codes Distribution</Heading>
                     <Chart
                         options={statusCodeChart.options}
-                        series={statusCodeChart.series}
-                        type="treemap"
+                        series={statusCodeChart.series as ApexNonAxisChartSeries}
+                        type="pie"
                         height={350}
                     />
                     <PaginatedTable
@@ -397,6 +463,7 @@ const Dashboard: React.FC = () => {
                         initialSortDirection="descending"
                     />
                 </Box>
+
 
                 <Box borderWidth={1} borderRadius="lg" p={4}>
                     <Heading as="h2" size="lg" mb={4}>Requests Over Time</Heading>
