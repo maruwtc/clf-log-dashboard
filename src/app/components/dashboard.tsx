@@ -388,13 +388,9 @@ const Dashboard = () => {
     return (
         <Box>
             {usingSampleData && (
-                <Alert status='warning' mb={4} borderRadius={'full'}>
+                <Alert status='warning' mb={4} borderRadius={'lg'}>
                     <AlertIcon />
                     <AlertTitle>Using Sample Data</AlertTitle>
-                    <AlertDescription>
-                        Unable to read local log file. Displaying sample data instead.
-                        {errorMessage && <Text mt={2}>Error details: {errorMessage}</Text>}
-                    </AlertDescription>
                 </Alert>
             )}
             {Object.keys(statusCodes).length === 0 && (

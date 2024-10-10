@@ -196,10 +196,9 @@ const LogTablePage = () => {
     return (
         <Box>
             {usingSampleData && (
-                <Alert status='warning' mb={4} borderRadius={'full'}>
+                <Alert status='warning' mb={4} borderRadius={'lg'}>
                     <AlertIcon />
                     <AlertTitle>Using Sample Data</AlertTitle>
-                    <AlertDescription>Unable to read log data from server. Displaying sample data instead.</AlertDescription>
                 </Alert>
             )}
             <VStack spacing={4} align="stretch" mb={4}>
