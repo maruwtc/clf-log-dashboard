@@ -1,3 +1,4 @@
+'use client';
 import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { Box, Heading, SimpleGrid, Text, Center, Spinner, useColorMode, Table, Thead, Tbody, Tr, Th, Td, Select, Button, HStack, Flex, Alert, AlertIcon, AlertTitle, AlertDescription } from '@chakra-ui/react';

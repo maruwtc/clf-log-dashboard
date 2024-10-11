@@ -1,10 +1,10 @@
 "use client";
-import Dashboard from './components/dashboard';
+import Home from './components/home';
 
-const Home = () => {
+const Page = () => {
   return (
-    <Dashboard />
+    <Home />
   );
 };
 
-export default Home;
+export default Page;
