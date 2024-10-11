@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
+import Link from 'next/link';
 import {
     IconButton,
     Box,
@@ -22,6 +23,7 @@ import {
     FiMenu,
     FiMoon,
     FiSun,
+    FiLogOut
 } from 'react-icons/fi'
 import { IconType } from 'react-icons'
 import { TbLayoutSidebarRightExpand, TbLayoutSidebarLeftExpand } from "react-icons/tb";
@@ -48,7 +50,7 @@ interface SidebarProps extends BoxProps {
 }
 
 const LinkItems: Array<LinkItemProps> = [
-    { name: 'Dashboard', icon: LuLayoutDashboard, path: '/' },
+    { name: 'Dashboard', icon: LuLayoutDashboard, path: '/dashboard' },
     { name: 'Search', icon: IoSearch, path: '/search' },
 ]
 
@@ -146,6 +148,14 @@ const HorizontalBar = ({ onOpen, currentLinkItem }: { onOpen: () => void, curren
                     onClick={toggleColorMode}
                     _hover={{ bg: 'transparent' }}
                 />
+                <IconButton
+                    size="md"
+                    variant="ghost"
+                    aria-label="log out"
+                    icon={<FiLogOut />}
+                    onClick={() => { }}
+                    _hover={{ bg: 'transparent' }}
+                />
             </HStack>
         </Flex>
     )
@@ -233,11 +243,7 @@ const ExpandButton = ({ isExpanded, onClick }: { isExpanded: boolean, onClick: (
 
 const NavItem = ({ icon, children, path, isActive, isExpanded, ...rest }: NavItemProps & { isExpanded: boolean }) => {
     return (
-        <Box
-            as="a"
-            href={path}
-            style={{ textDecoration: 'none' }}
-            _focus={{ boxShadow: 'none' }}>
+        <Link href={path} style={{ textDecoration: 'none' }}>
             <Flex
                 align="center"
                 p="4"
@@ -311,6 +317,6 @@ const NavItem = ({ icon, children, path, isActive, isExpanded, ...rest }: NavIte
                     />
                 )}
             </Flex>
-        </Box>
+        </Link >
     )
 }
