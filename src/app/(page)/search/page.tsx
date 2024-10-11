@@ -1,4 +1,4 @@
-"use client";
+'use client';
 import React, { useState, useEffect } from 'react';
 import {
     Box,
@@ -23,6 +23,7 @@ import {
     Center,
 } from '@chakra-ui/react';
 import { ChevronUpIcon, ChevronDownIcon } from '@chakra-ui/icons';
+import { sampleLogs } from '@/lib/samplelog';
 
 const LogTablePage = () => {
     interface Log {
@@ -80,8 +81,11 @@ const LogTablePage = () => {
             } catch (error) {
                 console.error('Error fetching log data:', error);
                 setError((error as Error).message);
+                // Use sample data when there's an error
+                const parsedSampleLogs = parseLogLines(sampleLogs);
+                setLogs(parsedSampleLogs);
+                setFilteredLogs(parsedSampleLogs);
                 setUsingSampleData(true);
-                // You might want to set some sample data here if available
             } finally {
                 setIsLoading(false);
             }
@@ -183,7 +187,7 @@ const LogTablePage = () => {
         );
     }
 
-    if (error) {
+    if (error && !usingSampleData) {
         return (
             <Alert status='error' mb={4} borderRadius={'full'}>
                 <AlertIcon />
@@ -199,6 +203,7 @@ const LogTablePage = () => {
                 <Alert status='warning' mb={4} borderRadius={'lg'}>
                     <AlertIcon />
                     <AlertTitle>Using Sample Data</AlertTitle>
+                    <AlertDescription>Unable to fetch actual log data. Displaying sample logs instead.</AlertDescription>
                 </Alert>
             )}
             <VStack spacing={4} align="stretch" mb={4}>
@@ -223,6 +228,7 @@ const LogTablePage = () => {
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
                     >
+                        <option value="">All Statuses</option>
                         {uniqueStatuses.map(status => (
                             <option key={status} value={status}>{status}</option>
                         ))}
@@ -232,6 +238,7 @@ const LogTablePage = () => {
                         value={methodFilter}
                         onChange={(e) => setMethodFilter(e.target.value)}
                     >
+                        <option value="">All Methods</option>
                         {uniqueMethods.map(method => (
                             <option key={method} value={method}>{method}</option>
                         ))}
